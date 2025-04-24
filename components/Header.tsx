@@ -53,7 +53,6 @@ export default function Header() {
                                 <a href="/#visita-empresarial" className="block text-white/90 hover:text-tecmitalk-accent text-2xl font-medium" onClick={() => setIsMenuOpen(false)}>Visita Empresarial</a>
                                 <a href="/#tickets" className="block text-white/90 hover:text-tecmitalk-accent text-2xl font-medium" onClick={() => setIsMenuOpen(false)}>Tickets</a>
                                 <a href="/#location" className="block text-white/90 hover:text-tecmitalk-accent text-2xl font-medium" onClick={() => setIsMenuOpen(false)}>Ubicación</a>
-                                <Link href="/info" className="block text-white/90 hover:text-tecmitalk-accent text-2xl font-medium" onClick={() => setIsMenuOpen(false)}>Info</Link>
                             </div>
                             <div className="pt-12 space-y-6 w-full flex flex-col">
                                 <Link
@@ -75,7 +74,6 @@ export default function Header() {
                     <a href="/#visita-empresarial" className="text-white/90 hover:text-tecmitalk-accent text-[17px] font-medium transition-colors duration-200">Visita Empresarial</a>
                     <a href="/#tickets" className="text-white/90 hover:text-tecmitalk-accent text-[17px] font-medium transition-colors duration-200">Tickets</a>
                     <a href="/#location" className="text-white/90 hover:text-tecmitalk-accent text-[17px] font-medium transition-colors duration-200">Ubicación</a>
-                    <Link href="/info" className="text-white/90 hover:text-tecmitalk-accent text-[17px] font-medium transition-colors duration-200">Info</Link>
                 </div>
                 {/* Botones desktop */}
                 <div className='hidden md:flex gap-4 items-center'>
