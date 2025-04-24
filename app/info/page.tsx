@@ -12,14 +12,14 @@ interface Order {
 }
 
 interface OrderWorkshop {
-  id: uuid;
-  order_id: uuid;
+  id: string;
+  order_id: string;
   workshop_id: number;
   quantity: number;
   created_at: string;
   updated_at: string;
   orders: {
-    id: uuid;
+    id: string;
     customer_name: string;
     customer_email: string;
   };
@@ -43,7 +43,7 @@ export default function TallerAdmin() {
   const [showAttendees, setShowAttendees] = useState<number | null>(null);
 
   const handleToggle = (id: number) => {
-    setOpenWorkshopId(openWorkshopId === id ? null : id);
+    setOpenWorkshopId(openWorkshopId === String(id) ? null : String(id));
   };
 
   const handleAttendeesToggle = (e: React.MouseEvent, id: number) => {
@@ -121,7 +121,7 @@ export default function TallerAdmin() {
               <div
                 key={taller.id}
                 className={`relative overflow-hidden rounded-2xl group transition-all duration-500 bg-white/5 backdrop-blur-lg border ${
-                  openWorkshopId === taller.id
+openWorkshopId === String(taller.id)
                     ? "border-[#2DDC2F] scale-105 shadow-2xl shadow-tecmitalk-accent/20"
                     : "border-white/10"
                 } hover:border-[#2DDC2F] hover:scale-[1.02] hover:shadow-lg hover:shadow-tecmitalk-accent/10 transform`}
@@ -148,7 +148,7 @@ export default function TallerAdmin() {
                       <span>Ver más detalles</span>
                       <svg
                         className={`w-4 h-4 ml-2 transition-transform duration-300 ${
-                          openWorkshopId === taller.id ? 'rotate-180' : ''
+openWorkshopId === String(taller.id) ? 'rotate-180' : ''
                         }`}
                         fill="none"
                         stroke="currentColor"
@@ -160,7 +160,7 @@ export default function TallerAdmin() {
 
                     <div
                       className={`mt-4 transition-all duration-500 ease-in-out ${
-                        openWorkshopId === taller.id
+openWorkshopId === String(taller.id)
                           ? 'opacity-100 translate-y-0 max-h-[500px]'
                           : 'opacity-0 -translate-y-4 max-h-0 overflow-hidden'
                       }`}
