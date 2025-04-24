@@ -29,7 +29,7 @@ interface Workshop {
   id: number;
   name: string;
   description_workshop: string;
-  leader_workshop: string;
+  leadear_worshop: string;
   capacity: number;
   current_attendees: number;
   order_workshops: OrderWorkshop[];
@@ -137,7 +137,7 @@ openWorkshopId === String(taller.id)
                   </div>
 
                   <p className="text-white/80 text-sm flex items-center gap-2">
-                    <span className="text-tecmitalk-accent">Imparte:</span> {taller.leader_workshop || "Por confirmar"}
+                    <span className="text-tecmitalk-accent">Imparte:</span> {taller.leadear_worshop || "Por confirmar"}
                   </p>
 
                   <div
