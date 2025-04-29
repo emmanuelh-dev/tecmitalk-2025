@@ -23,6 +23,15 @@ type WorkshopType = {
   current_attendees: number;
 };
 
+type CorporateType = {
+  id: number;
+  name: string;
+  capacity: number;
+  current_attendees: number;
+  finish_time: string;
+  starting_time: string;
+}
+
 type PaymentMethod = 'efectivo' | 'transferencia';
 
 export default function TicketsPage() {
@@ -37,15 +46,17 @@ export default function TicketsPage() {
     quantity: 1,
     paymentMethod: '' as PaymentMethod,
     selectedWorkshop: '',
+    selectedCorporateVisit: '',
   });
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [availableTickets, setAvailableTickets] = useState<TicketType[]>([]);
   const [workshops, setWorkshops] = useState<WorkshopType[]>([]);
+  const [corporate_visit, setCorporates] = useState<CorporateType[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [loadingWorkshops, setLoadingWorkshops] = useState(true);
+  const [loadingCorporates, setLoadingCorporates] = useState(true);
 
-  // Cargar tickets y talleres activos desde Supabase
   useEffect(() => {
     const fetchData = async () => {
       const supabase = createClient();
@@ -62,7 +73,6 @@ export default function TicketsPage() {
           throw new Error("No se pudieron cargar los tickets. Intenta recargar la página.");
         }
   
-        // Si no hay tickets activos
         if (ticketsData.length === 0) {
           setAvailableTickets([]);
           throw new Error("Actualmente no hay tickets disponibles.");
@@ -75,17 +85,29 @@ export default function TicketsPage() {
         
         if (needsWorkshops) {
           const { data: workshopsData, error: workshopsError } = await supabase
-          .from('workshops')
-          .select('*')
-          .gt('capacity', 0)  // Solo talleres con capacidad disponible
-          .order('name');
+            .from('workshops')
+            .select('*')
+            .gt('capacity', 0)
+            .order('name');
   
           if (workshopsError) {
             console.error("Error talleres:", workshopsError);
-            // No lanzar error, solo mostrar advertencia
             setError(prev => prev + " (Advertencia: Talleres no disponibles)");
           } else {
             setWorkshops(workshopsData || []);
+          }
+
+          const { data: corporateData, error: corporateError } = await supabase
+            .from('corporate_visit')
+            .select('*')
+            .gt('capacity', 0)
+            .order('starting_time');
+  
+          if (corporateError) {
+            console.error("Error visitas empresariales:", corporateError);
+            setError(prev => prev + " (Advertencia: Visitas empresariales no disponibles)");
+          } else {
+            setCorporates(corporateData || []);
           }
         }
   
@@ -95,6 +117,7 @@ export default function TicketsPage() {
       } finally {
         setLoadingTickets(false);
         setLoadingWorkshops(false);
+        setLoadingCorporates(false);
       }
     };
   
@@ -112,9 +135,12 @@ export default function TicketsPage() {
     if (!formData.paymentMethod) errors.paymentMethod = 'Selecciona método de pago';
     if (formData.quantity < 1 || formData.quantity > 10) errors.quantity = '1-10 boletos';
     
-    // Validación de taller para boletos VIP y Priority
     if (selectedTicket && (selectedTicket.type === 'vip' || selectedTicket.type === 'priority') && !formData.selectedWorkshop) {
       errors.selectedWorkshop = 'Selecciona un taller';
+    }
+    
+    if (selectedTicket && (selectedTicket.type === 'vip' || selectedTicket.type === 'priority') && !formData.selectedCorporateVisit) {
+      errors.selectedCorporateVisit = 'Selecciona una visita empresarial';
     }
     
     setFormErrors(errors);
@@ -133,9 +159,8 @@ export default function TicketsPage() {
     if (name === 'ticketType') {
       const ticket = availableTickets.find(t => t.id.toString() === value) || null;
       setSelectedTicket(ticket);
-      // Resetear taller seleccionado al cambiar tipo de boleto
       if (ticket?.type !== 'vip' && ticket?.type !== 'priority') {
-        setFormData(prev => ({ ...prev, selectedWorkshop: '' }));
+        setFormData(prev => ({ ...prev, selectedWorkshop: '', selectedCorporateVisit: '' }));
       }
     }
   };
@@ -145,14 +170,12 @@ export default function TicketsPage() {
     setLoading(true);
     setError('');
 
-    // Validación final antes de enviar
     if (Object.keys(formErrors).length > 0 || !selectedTicket) {
       setError('Por favor completa todos los campos requeridos correctamente');
       setLoading(false);
       return;
     }
 
-    // Validación explícita del teléfono
     const phoneDigits = formData.phone.replace(/\D/g, '');
     if (phoneDigits.length < 10) {
       setError('El número de teléfono debe contener al menos 10 dígitos');
@@ -160,7 +183,6 @@ export default function TicketsPage() {
       return;
     }
 
-    // Validar disponibilidad de tickets
     if (selectedTicket.quantity_available < formData.quantity) {
       setError(`No hay suficientes boletos disponibles. Solo quedan ${selectedTicket.quantity_available}`);
       setLoading(false);
@@ -220,35 +242,68 @@ export default function TicketsPage() {
         }
 
         // Actualizar contador de asistentes al taller
-// 1. Primero obtenemos la orden de workshop para verificar la cantidad exacta
-      const { data: workshopOrder, error: workshopOrderError } = await supabase
-        .from('order_workshops')
-        .select('quantity')
-        .eq('order_id', order.id) // ID de la orden recién creada
-        .eq('workshop_id', formData.selectedWorkshop)
-        .single();
+        const { data: workshopOrder, error: workshopOrderError } = await supabase
+          .from('order_workshops')
+          .select('quantity')
+          .eq('order_id', order.id)
+          .eq('workshop_id', formData.selectedWorkshop)
+          .single();
 
-      if (workshopError || !workshopOrder) {
-        console.error('Error al verificar la compra de boletos:', workshopError);
-        throw new Error('No se pudo confirmar la reserva en el taller');
-      }
+        if (workshopOrderError || !workshopOrder) {
+          console.error('Error al verificar la compra de boletos:', workshopOrderError);
+          throw new Error('No se pudo confirmar la reserva en el taller');
+        }
 
-      // 2. Actualizamos usando la cantidad EXACTA de la orden
-      const { error: updateError } = await supabase.rpc('increment_workshop_attendees', {
-        workshop_id: parseInt(formData.selectedWorkshop), // Mantenemos el parseo a integer
-        increment_value: workshopOrder.quantity // Usamos la cantidad registrada en order_workshops
-      });
-        console.log(formData.selectedWorkshop, formData.quantity);
+        const { error: updateWorkshopError } = await supabase.rpc('increment_workshop_attendees', {
+          workshop_id: parseInt(formData.selectedWorkshop),
+          increment_value: workshopOrder.quantity
+        });
 
-        if (error) {
-          console.error('Error al actualizar asistentes:', error);
-          alert('Ocurrió un error al actualizar asistentes.');
-        } else {
-          console.log('Workshop attendees updated successfully');
+        if (updateWorkshopError) {
+          console.error('Error al actualizar asistentes:', updateWorkshopError);
+          throw updateWorkshopError;
         }
       }
 
-      // 4. Actualizar cantidad disponible de tickets
+ // 4. Insertar visita empresarial si es VIP o Priority
+if ((selectedTicket.type === 'vip' || selectedTicket.type === 'priority') && formData.selectedCorporateVisit) {
+  try {
+    // Primero actualizamos el contador de asistentes 
+    const { error: updateCorporateError } = await supabase.rpc('adjust_corporate_visit_attendees', {
+      p_visit_id: parseInt(formData.selectedCorporateVisit), // Asegurar que es bigint
+      p_increment: formData.quantity // Cambiado de increment_value a adjustment
+    });
+
+    if (updateCorporateError) {
+      throw new Error(`Error al actualizar asistentes: ${updateCorporateError.message}`);
+    }
+
+    // Luego insertamos el registro de la visita
+    const { error: corporateError } = await supabase
+      .from('order_corporate_visits')
+      .insert({
+        order_id: order.id,
+        corporate_visit_id: parseInt(formData.selectedCorporateVisit),
+        quantity: formData.quantity
+      });
+
+    if (corporateError) {
+      // Si falla la inserción, revertimos el cambio en los asistentes
+      await supabase.rpc('adjust_corporate_visit_attendees', {
+        p_visit_id: parseInt(formData.selectedCorporateVisit),
+        p_increment: -formData.quantity
+      });
+      
+      await supabase.from('orders').delete().eq('id', order.id);
+      throw corporateError;
+    }
+
+  } catch (error) {
+    console.error('Error en proceso de visita empresarial:', error);
+    throw error; // Re-lanzamos el error para manejo superior
+  }
+}
+      // 5. Actualizar cantidad disponible de tickets
       const { error: updateError } = await supabase
         .from('tickets')
         .update({ quantity_available: selectedTicket.quantity_available - formData.quantity })
@@ -259,7 +314,7 @@ export default function TicketsPage() {
         throw updateError;
       }
 
-      // 5. Redirigir a confirmación
+      // 6. Redirigir a confirmación
       router.push(
         `/confirmacion?order_id=${order.id}` +
         `&amount=${totalAmount.toFixed(2)}` +
@@ -274,6 +329,15 @@ export default function TicketsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatTime = (time: string | null) => {
+    if (!time) return '';
+    return new Date(`2000-01-01T${time}`).toLocaleTimeString('es-MX', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   const totalAmount = selectedTicket ? (selectedTicket.price * formData.quantity).toFixed(2) : '0.00';
@@ -457,6 +521,36 @@ export default function TicketsPage() {
                   {formErrors.selectedWorkshop && <p className="text-red-400 text-sm mt-1">{formErrors.selectedWorkshop}</p>}
                 </div>
               )}
+{/* Selector de visita empresarial para boletos VIP y Priority */}
+{selectedTicket && (selectedTicket.type === 'vip' || selectedTicket.type === 'priority') && (
+  <div>
+    <label htmlFor="selectedCorporateVisit" className="block text-sm font-medium text-gray-300 mb-2">
+      Selecciona una visita empresarial *
+    </label>
+    <select
+      id="selectedCorporateVisit"
+      name="selectedCorporateVisit"
+      value={formData.selectedCorporateVisit}
+      onChange={handleInputChange}
+      className={`w-full p-3 bg-blue-900/20 border ${
+        formErrors.selectedCorporateVisit ? 'border-red-500' : 'border-blue-400/30'
+      } rounded-lg text-white focus:ring-2 focus:ring-tecmitalk-accent focus:border-transparent`}
+      required
+    >
+      <option value="">Selecciona una visita</option>
+      {corporate_visit.map(visit => (
+        <option key={visit.id} value={visit.id} className="bg-[#14095D]">
+          {visit.name} (
+            {formatTime(visit.starting_time)} - {formatTime(visit.finish_time)}
+          ) - {visit.capacity - visit.current_attendees} lugares disponibles
+        </option>
+      ))}
+    </select>
+    {formErrors.selectedCorporateVisit && (
+      <p className="text-red-400 text-sm mt-1">{formErrors.selectedCorporateVisit}</p>
+    )}
+  </div>
+)}
             </div>
 
             {selectedTicket && (
@@ -481,6 +575,14 @@ export default function TicketsPage() {
                     <p className="pt-2">
                       Taller seleccionado: <span className="font-medium">
                         {workshops.find(w => w.id.toString() === formData.selectedWorkshop)?.name}
+                      </span>
+                    </p>
+                  )}
+                  
+                  {formData.selectedCorporateVisit && (
+                    <p className="pt-2">
+                      Visita empresarial: <span className="font-medium">
+                        {corporate_visit.find(v => v.id.toString() === formData.selectedCorporateVisit)?.name}
                       </span>
                     </p>
                   )}

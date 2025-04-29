@@ -12,7 +12,6 @@ import Link from 'next/link';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Order, OrderItem } from '../types';
 
-
 interface Student {
   id: string;
   name: string;
@@ -30,7 +29,6 @@ interface Student {
   customer_email?: string;
   customer_name?: string;
 }
-
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1'];
 
@@ -56,8 +54,7 @@ export default function AdminPage() {
     typepay: '',
     paid: true
   });
-
-  // Mover los estados de filtro dentro del componente
+  
   const [filters, setFilters] = useState({
     ticketType: '',
     paymentType: '',
@@ -65,9 +62,6 @@ export default function AdminPage() {
     searchId: ''
   });
 
-
-
-  // Mover la función de filtrado dentro del componente
   const filteredOrders = students.filter(student => {
     return (
       (filters.ticketType === '' || student.typeticket === filters.ticketType) &&
@@ -78,7 +72,6 @@ export default function AdminPage() {
       (filters.searchId === '' || student.id.toLowerCase().includes(filters.searchId.toLowerCase()))
     );
   });
-
 
   const handleDeleteConfirm = async () => {
     if (!itemToDelete) return;
@@ -100,7 +93,6 @@ export default function AdminPage() {
 
       toast.success('Asistente eliminado con éxito');
 
-      // Refresh data
       const { data } = await supabase.from('orders').select('*');
       if (data) {
         setStudents(data as Student[]);
@@ -131,7 +123,6 @@ export default function AdminPage() {
 
       toast.success('Asistente actualizado con éxito');
 
-      // Refresh data
       const { data } = await supabase.from('orders').select('*');
       if (data) {
         setStudents(data as Student[]);
@@ -144,11 +135,32 @@ export default function AdminPage() {
     }
   };
 
+  const handleTogglePaymentStatus = async (orderId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ paid: !currentStatus })
+        .eq('id', orderId);
+      
+      if (error) throw error;
+      
+      toast.success(`Estado actualizado a ${!currentStatus ? 'Pagado' : 'Pendiente'}`);
+      
+      const { data } = await supabase.from('orders').select('*');
+      if (data) {
+        setStudents(data as Student[]);
+        processChartData(data as Student[]);
+      }
+    } catch (err) {
+      console.error('Error al actualizar:', err);
+      toast.error('Error al actualizar el estado');
+    }
+  };
+
   const handleRegisterSubmit = async () => {
     const supabase = createClient();
 
     try {
-      // Validación de campos obligatorios
       if (!formData.name || !formData.matricula || !formData.typeticket) {
         toast.error('Campos obligatorios faltantes', {
           description: 'Nombre, matrícula y tipo de boleto son requeridos',
@@ -157,7 +169,6 @@ export default function AdminPage() {
         return;
       }
 
-      // Insertar en Supabase
       const { error } = await supabase
         .from('orders')
         .insert([{
@@ -174,7 +185,6 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      // Notificación de éxito mejorada
       toast.success('¡Registro exitoso!', {
         description: (
           <div className="mt-2">
@@ -186,7 +196,6 @@ export default function AdminPage() {
         position: 'top-right'
       });
 
-      // Reset del formulario (versión optimizada)
       setFormData({
         name: '',
         apellido: '',
@@ -199,7 +208,6 @@ export default function AdminPage() {
         paid: false
       });
 
-      // Refrescar datos (versión optimizada)
       const { data, error: fetchError } = await supabase
         .from('orders')
         .select('*');
@@ -223,9 +231,7 @@ export default function AdminPage() {
     }
   };
 
-
   const processChartData = (data: Student[]) => {
-    // Process campus data
     const campusCounts: Record<string, number> = {};
     CAMPUSES.forEach(campus => {
       campusCounts[campus.name] = 0;
@@ -242,7 +248,6 @@ export default function AdminPage() {
       careerCounts[careerName] = (careerCounts[careerName] || 0) + 1;
     });
 
-    // Process user type data
     const userTypeCounts = {
       'Estudiantes': 0,
       'ExaTecmis': 0
@@ -255,7 +260,7 @@ export default function AdminPage() {
         userTypeCounts['ExaTecmis']++;
       }
     });
-    // Process payment status data
+
     const paymentCounts = {
       'Pagado': 0,
       'Pendiente': 0
@@ -273,7 +278,6 @@ export default function AdminPage() {
       .map(([name, value]) => ({ name, value }));
     setPaymentData(paymentChartData);
 
-    // Process ticket type data
     const ticketCounts: Record<string, number> = {};
     data.forEach(student => {
       const ticketType = BOLETOSTYPE.find(b => b.id === student.typeticket)?.name || 'No especificado';
@@ -338,8 +342,6 @@ export default function AdminPage() {
     ) : null;
   };
 
-  console.log(filteredOrders)
-  console.log(orders_items[0])
   return (
     <div className="min-h-screen bg-custom-green py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
@@ -360,7 +362,6 @@ export default function AdminPage() {
                   <DialogTitle>Registrar Nuevo Asistente</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-6">
-                  {/* Sección 1: Datos Personales */}
                   <div className="border-b pb-4">
                     <h3 className="text-lg font-medium">Datos Personales</h3>
                     <div className="grid gap-4 md:grid-cols-2 mt-4">
@@ -376,7 +377,6 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* Sección 2: Información del Boleto */}
                   <div>
                     <h3 className="text-lg font-medium">Información del Boleto</h3>
                     <div className="grid gap-4 md:grid-cols-2 mt-4">
@@ -424,7 +424,6 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* Botón de envío */}
                   <div className="flex justify-end pt-4">
                     <Button
                       onClick={handleRegisterSubmit}
@@ -437,11 +436,15 @@ export default function AdminPage() {
                 </div>
               </DialogContent>
             </Dialog>
+            <Button asChild className="bg-white text-custom-green hover:bg-gray-100">
+              <Link href="/info">
+                Ver Asistentes
+              </Link>
+            </Button>
           </div>
         </div>
 
         <div className="grid gap-6 mb-8 md:grid-cols-2 lg:grid-cols-3">
-          {/* Payment Status Chart */}
           <Card className="bg-white border border-gray-200 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Estado de Pagos</CardTitle>
@@ -477,7 +480,6 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          {/* Ticket Distribution Chart */}
           <Card className="bg-white border border-gray-200 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Distribución de Boletos</CardTitle>
@@ -540,13 +542,11 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* Asistentes Table */}
         <Card className="bg-white border border-gray-200 shadow-lg">
           <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <CardTitle>Lista de Asistentes</CardTitle>
               <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                {/* Filtro de búsqueda por ID */}
                 <input
                   type="text"
                   placeholder="Buscar por ID o matrícula"
@@ -555,7 +555,6 @@ export default function AdminPage() {
                   onChange={(e) => setFilters({ ...filters, searchId: e.target.value })}
                 />
 
-                {/* Filtro por Tipo de Boleto */}
                 <select
                   className="border p-2 rounded text-sm"
                   value={filters.ticketType}
@@ -569,7 +568,6 @@ export default function AdminPage() {
                   ))}
                 </select>
 
-                {/* Filtro por Tipo de Pago */}
                 <select
                   className="border p-2 rounded text-sm"
                   value={filters.paymentType}
@@ -583,7 +581,6 @@ export default function AdminPage() {
                   ))}
                 </select>
 
-                {/* Filtro por Estado de Pago */}
                 <select
                   className="border p-2 rounded text-sm"
                   value={filters.paymentStatus}
@@ -594,7 +591,6 @@ export default function AdminPage() {
                   <option value="unpaid">Pendiente</option>
                 </select>
 
-                {/* Botón para limpiar filtros */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -621,7 +617,6 @@ export default function AdminPage() {
                     <th className="text-left py-3 px-4">Estatus</th>
                     <th className="text-left py-3 px-4">Tipo de Boleto</th>
                     <th className="text-left py-3 px-4">Tipo de Pago</th>
-                    <th className="text-left py-3 px-4">Estado de Pago</th>
                     <th className="text-left py-3 px-4">Acciones</th>
                   </tr>
                 </thead>
@@ -652,6 +647,13 @@ export default function AdminPage() {
                               onClick={() => handleEdit(order)}
                             >
                               Editar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleTogglePaymentStatus(order.id, order.paid)}
+                            >
+                              {order.paid ? 'Marcar Pendiente' : 'Marcar Pagado'}
                             </Button>
                             <Link
                               href={`/tickets/${order.id}`}
@@ -698,7 +700,6 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -719,7 +720,6 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Student Dialog */}
       <Dialog open={selectedStudentToEdit !== null} onOpenChange={() => setSelectedStudentToEdit(null)}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -727,7 +727,6 @@ export default function AdminPage() {
           </DialogHeader>
           {selectedStudentToEdit && (
             <div className="p-4 space-y-6">
-              {/* Sección 1: Datos Personales */}
               <div className="border-b pb-4">
                 <h3 className="text-lg font-medium">Datos Personales</h3>
                 <div className="grid gap-4 md:grid-cols-2 mt-4">
@@ -779,7 +778,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Sección 2: Información del Boleto */}
               <div>
                 <h3 className="text-lg font-medium">Información del Boleto</h3>
                 <div className="grid gap-4 md:grid-cols-2 mt-4">
@@ -846,7 +844,6 @@ export default function AdminPage() {
           )}
         </DialogContent>
         <DialogFooter>
-
         </DialogFooter>
       </Dialog>
     </div>
