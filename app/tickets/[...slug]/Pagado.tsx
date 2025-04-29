@@ -1,8 +1,9 @@
 import { type Order, type OrderItem } from '@/app/types'
 import Image from 'next/image'
 import Link from 'next/link'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import QRCode from 'react-qr-code'
+import { createClient } from '@/lib/supabase/client'
 
 function Boleto({ orderItems }: { orderItems: OrderItem }) {
   const ticketImages = {
@@ -25,6 +26,50 @@ function Boleto({ orderItems }: { orderItems: OrderItem }) {
 }
 
 export default function Pagado({ order, orderItems }: { order: Order, orderItems: OrderItem[] }) {
+  const [workshopDetails, setWorkshopDetails] = useState<any[]>([]);
+  const [corporateVisitDetails, setCorporateVisitDetails] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAdditionalDetails = async () => {
+      if (!order || !order.id) return;
+      
+      const supabase = createClient();
+      
+      try {
+        // Obtener detalles de talleres
+        const { data: workshopData, error: workshopError } = await supabase
+          .from('order_workshops')
+          .select(`
+            *,
+            workshops:workshop_id (id, name, description_workshop, leadear_worshop)
+          `)
+          .eq('order_id', order.id);
+          
+        if (workshopError) throw workshopError;
+        setWorkshopDetails(workshopData || []);
+        
+        // Obtener detalles de visitas empresariales
+        const { data: corporateData, error: corporateError } = await supabase
+          .from('order_corporate_visits')
+          .select(`
+            *,
+            corporate_visits:corporate_visit_id (id, name, starting_time)
+          `)
+          .eq('order_id', order.id);
+          
+        if (corporateError) throw corporateError;
+        setCorporateVisitDetails(corporateData || []);
+      } catch (err) {
+        console.error('Error al cargar detalles adicionales:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAdditionalDetails();
+  }, [order]);
+
   return (
     <div className="min-h-screen bg-[#14095D] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto bg-white/5 rounded-xl border border-tecmitalk-accent/30 p-6 md:p-8">
@@ -204,6 +249,82 @@ export default function Pagado({ order, orderItems }: { order: Order, orderItems
                 ))}
               </div>
             </div>
+
+            {/* Talleres seleccionados */}
+            {workshopDetails.length > 0 && (
+              <div className="bg-blue-900/10 border border-blue-400/20 rounded-lg p-6">
+                <h2 className="text-xl font-semibold text-white mb-4">Talleres Seleccionados</h2>
+                <div className="space-y-4">
+                  {workshopDetails.map((workshop) => (
+                    <div key={workshop.id} className="border-b border-blue-400/10 pb-4 last:border-0 last:pb-0">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-white font-medium">{workshop.workshops?.name || 'Taller'}</span>
+                        <span className="text-white">{workshop.quantity}x</span>
+                      </div>
+                      <p className="text-gray-400 text-sm">{workshop.workshops?.description_workshop || ''}</p>
+                      <p className="text-gray-400 text-sm mt-1">
+                        <span className="text-tecmitalk-accent">Instructor:</span> {workshop.workshops?.leadear_worshop || 'Por confirmar'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Visitas empresariales seleccionadas */}
+            {corporateVisitDetails.length > 0 && (
+              <div className="bg-blue-900/10 border border-blue-400/20 rounded-lg p-6">
+                <h2 className="text-xl font-semibold text-white mb-4">Visitas Empresariales</h2>
+                <div className="space-y-4">
+                  {corporateVisitDetails.map((visit) => (
+                    <div key={visit.id} className="border-b border-blue-400/10 pb-4 last:border-0 last:pb-0">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-white font-medium">{visit.corporate_visits?.name || 'Visita Empresarial'}</span>
+                        <span className="text-white">{visit.quantity}x</span>
+                      </div>
+                      <p className="text-gray-400 text-sm mb-2">{visit.corporate_visits?.description || 'Detalles de la visita empresarial'}</p>
+                      <div className="flex flex-wrap gap-3 mt-3">
+                        {visit.corporate_visits?.starting_time && (
+                          <div className="bg-blue-900/30 px-3 py-1.5 rounded-md inline-flex items-center">
+                            <svg className="w-4 h-4 mr-1.5 text-tecmitalk-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-white text-sm">
+                              {new Date(`1970-01-01T${visit.corporate_visits.starting_time}`).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {visit.corporate_visits?.location && (
+                          <div className="bg-blue-900/30 px-3 py-1.5 rounded-md inline-flex items-center">
+                            <svg className="w-4 h-4 mr-1.5 text-tecmitalk-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-white text-sm">{visit.corporate_visits.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Mensaje cuando no hay talleres ni visitas */}
+            {!isLoading && workshopDetails.length === 0 && corporateVisitDetails.length === 0 && 
+              orderItems.some(item => 
+                item.tickets?.name === 'Boleto VIP' || item.tickets?.name === 'Boleto Priority'
+              ) && (
+              <div className="bg-blue-900/10 border border-yellow-400/20 rounded-lg p-6">
+                <p className="text-yellow-400 text-center">
+                  No has seleccionado talleres o visitas empresariales. 
+                  Contacta con nosotros para completar tu selección.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
