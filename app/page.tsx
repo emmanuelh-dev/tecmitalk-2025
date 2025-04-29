@@ -5,6 +5,7 @@ import Tickets from '@/components/sections/Tickets'
 import Talleres from '@/components/sections/Talleres'
 import Ponentes from '@/components/sections/Ponentes'
 import VisitaEmpresarial from '@/components/sections/VisitaEmpresarial'
+import TecmiTalkSchedule from '@/components/TecmiTalkSchedule'
 
 export default function Home() {
 
@@ -70,7 +71,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-
+        <TecmiTalkSchedule />
         {/* Why Attend Section */}
         <section className="bg-white/5 py-28">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
